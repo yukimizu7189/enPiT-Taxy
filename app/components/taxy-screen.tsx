@@ -10,7 +10,7 @@ export function TaxyScreen() {
       <main className={body}>
         <p className={eyebrow}>モックアップ</p>
         <h1 className={logo}>TAXY</h1>
-        <p className={tagline}>ここにアプリ画面を組み立てていきます</p>
+        <p className={tagline}>税金って、​意外と​知らない​ことだらけ。<br/>​「自分には​何が​必要？」<br/>が​サクッと​分かる​サービスです。​</p>
       </main>
     </div>
   );
@@ -97,7 +97,7 @@ const logo = css({
 
 const tagline = css({
   margin: "0.25rem 0 0",
-  maxWidth: "16rem",
+  maxWidth: "18rem",
   fontSize: "0.9rem",
   lineHeight: 1.6,
   color: "taxy.body",
