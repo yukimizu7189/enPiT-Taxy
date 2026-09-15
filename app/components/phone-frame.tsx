@@ -26,8 +26,7 @@ const stage = css({
   justifyContent: "center",
   gap: "1.5rem",
   padding: "2rem 1rem",
-  background:
-    "radial-gradient(ellipse 60% 50% at 50% 0%, #2a3142 0%, transparent 70%), radial-gradient(ellipse 40% 35% at 80% 90%, #3d2e14 0%, transparent 55%), {colors.taxy.ink}",
+  background: "#000",
   _phone: {
     padding: 0,
     gap: 0,

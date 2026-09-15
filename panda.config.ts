@@ -7,7 +7,7 @@ export default defineConfig({
   jsxFramework: "react",
   outdir: "styled-system",
   conditions: {
-    phone: "@media (max-width: 480px)",
+    phone: "@media (max-width: 768px)",
   },
   globalCss: {
     "html, body": {

@@ -4,12 +4,7 @@ export function TaxyScreen() {
   return (
     <div className={screen}>
       <header className={status}>
-        <span>9:41</span>
-        <span className={statusIcons} aria-hidden="true">
-          <span className={iconWeak} />
-          <span className={iconMid} />
-          <span className={iconStrong} />
-        </span>
+        
       </header>
 
       <main className={body}>
