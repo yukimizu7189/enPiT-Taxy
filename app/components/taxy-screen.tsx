@@ -8,7 +8,7 @@ export function TaxyScreen() {
       </header>
 
       <main className={body}>
-        <p className={eyebrow}>モックアップ</p>
+        
         <h1 className={logo}>TAXY</h1>
         <p className={tagline}>税金って、​意外と​知らない​ことだらけ。<br/>​「自分には​何が​必要？」<br/>が​サクッと​分かる​サービスです。​</p>
       </main>
