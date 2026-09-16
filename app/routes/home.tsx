@@ -4,8 +4,11 @@ import { TaxyScreen } from "../components/taxy-screen";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "TAXY — モックアップ" },
-    { name: "description", content: "TAXY スマホアプリのモックアップサイト" },
+    { title: "TAXY — 確定申告チェック" },
+    {
+      name: "description",
+      content: "大学生のアルバイター向け確定申告チェックのUX比較モック",
+    },
   ];
 }
 
