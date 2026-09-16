@@ -1,6 +1,10 @@
 import { css } from "styled-system/css";
+import { useState } from "react";
 
 export function TaxyScreen() {
+  const [answers, setAnswers] = useState<Record<number, boolean | null>>({});
+  const questions = ["質問1", "質問2", "質問3", "質問4"];
+
   return (
     <div className={screen}>
       <header className={status}>
@@ -11,7 +15,36 @@ export function TaxyScreen() {
         
         <h1 className={logo}>TAXY</h1>
         <p className={tagline}>税金って、​意外と​知らない​ことだらけ。<br/>​「自分には​何が​必要？」<br/>が​サクッと​分かる​サービスです。​</p>
+
+        <div className={questionaire}>
+          {questions.map((question, index) => (
+            <div key={question}>
+              <h2>{question}</h2>
+              <div className={button_wrapper}>
+                <button
+                  style={{ opacity: answers[index] === false ? 0.35 : 1 }}
+                  onClick={() =>
+                    setAnswers({ ...answers, [index]: true })
+                  }
+                >
+                  はい
+                </button>
+                <button
+                  style={{ opacity: answers[index] === true ? 0.35 : 1 }}
+                  onClick={() =>
+                    setAnswers({ ...answers, [index]: false })
+                  }
+                >
+                  いいえ
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
       </main>
+      
+
     </div>
   );
 }
@@ -76,6 +109,11 @@ const body = css({
   textAlign: "center",
 });
 
+const button_wrapper = css({
+  display: "flex",
+  gap: "1.2rem",
+})
+
 const eyebrow = css({
   margin: 0,
   fontSize: "0.7rem",
@@ -84,6 +122,18 @@ const eyebrow = css({
   textTransform: "uppercase",
   color: "taxy.muted",
 });
+
+
+const questionaire = css({
+  margin: 2,
+  flex: 10,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "0.75rem",
+  textAlign: "center",
+})
 
 const logo = css({
   margin: 0,
