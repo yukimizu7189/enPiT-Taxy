@@ -1,9 +1,53 @@
 import { css } from "styled-system/css";
 import { useState } from "react";
 
+type Answer = boolean;
+
 export function TaxyScreen() {
   const [answers, setAnswers] = useState<Record<number, boolean | null>>({});
-  const questions = ["質問1", "質問2", "質問3", "質問4"];
+  const [questionNumber, setQuestionNumber] = useState(1);
+  const [result, setResult] = useState<string | null>(null);
+
+  let question = "";
+
+  if (questionNumber === 1) {
+    question = "昨年働いたことのあるバイト先は1か所ですか？";
+  } else if (questionNumber === 2 && answers[1] === true) {
+    question = "バイト先で年末調整をしましたか？（扶養控除等（異動）申告書を出しましたか？）";
+  } else if (questionNumber === 2 && answers[1] === false) {
+    question = "どこかのバイト先で年末調整をしましたか？（扶養控除等（異動）申告書を出しましたか？）";
+  } else if (questionNumber === 3 && answers[1] === true) {
+    question = "バイト先以外で稼いだ所得は20万円以下ですか？";
+  } else if (questionNumber === 3 && answers[1] === false) {
+    question = "年末調整をしていない全てのバイト先の収入と、バイト先以外で稼いだお金の合計は20万円以下ですか？";
+  }
+
+  const answerQuestion = (answer: Answer) => {
+    setAnswers((currentAnswers) => ({
+      ...currentAnswers,
+      [questionNumber]: answer,
+    }));
+
+    if (questionNumber === 1) {
+      setQuestionNumber(2);
+      return;
+    }
+
+    if (questionNumber === 2) {
+      if (answer === false) {
+        setResult("確定申告必要");
+      } else {
+        setQuestionNumber(3);
+      }
+      return;
+    }
+
+    if (answers[1] === true) {
+      setResult(answer ? "確定申告必要" : "確定申告不要");
+    } else {
+      setResult(answer ? "確定申告不要" : "確定申告必要");
+    }
+  };
 
   return (
     <div className={screen}>
@@ -17,29 +61,17 @@ export function TaxyScreen() {
         <p className={tagline}>税金って、​意外と​知らない​ことだらけ。<br/>​「自分には​何が​必要？」<br/>が​サクッと​分かる​サービスです。​</p>
 
         <div className={questionaire}>
-          {questions.map((question, index) => (
-            <div key={question}>
+          {result ? (
+            <h2>{result}</h2>
+          ) : (
+            <>
               <h2>{question}</h2>
               <div className={button_wrapper}>
-                <button
-                  style={{ opacity: answers[index] === false ? 0.35 : 1 }}
-                  onClick={() =>
-                    setAnswers({ ...answers, [index]: true })
-                  }
-                >
-                  はい
-                </button>
-                <button
-                  style={{ opacity: answers[index] === true ? 0.35 : 1 }}
-                  onClick={() =>
-                    setAnswers({ ...answers, [index]: false })
-                  }
-                >
-                  いいえ
-                </button>
+                <button onClick={() => answerQuestion(true)}>はい</button>
+                <button onClick={() => answerQuestion(false)}>いいえ</button>
               </div>
-            </div>
-          ))}
+            </>
+          )}
         </div>
 
       </main>
