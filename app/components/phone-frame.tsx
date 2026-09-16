@@ -9,7 +9,6 @@ export function PhoneFrame({ children }: PhoneFrameProps) {
     <div className={stage}>
       <div className={device} aria-label="スマートフォンモック">
         <div className={bezel}>
-          <div className={island} aria-hidden="true" />
           <div className={screen}>{children}</div>
           <div className={homeIndicator} aria-hidden="true" />
         </div>
