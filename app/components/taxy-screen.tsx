@@ -49,6 +49,31 @@ export function TaxyScreen() {
     }
   };
 
+  const goBack = () => {
+    if (result !== null) {
+      setResult(null);
+      setAnswers((currentAnswers) => {
+        const updatedAnswers = { ...currentAnswers };
+        delete updatedAnswers[questionNumber];
+        return updatedAnswers;
+      });
+      return;
+    }
+
+    if (questionNumber === 1) {
+      return;
+    }
+
+    const previousQuestionNumber = questionNumber - 1;
+
+    setQuestionNumber(previousQuestionNumber);
+    setAnswers((currentAnswers) => {
+      const updatedAnswers = { ...currentAnswers };
+      delete updatedAnswers[previousQuestionNumber];
+      return updatedAnswers;
+    });
+  };
+
   return (
     <div className={screen}>
       <header className={status}>
@@ -58,6 +83,7 @@ export function TaxyScreen() {
       <main className={body}>
         
         <h1 className={logo}>TAXY</h1>
+        <p className={tagline}>大学生向け！</p>
         <p className={tagline}>税金って、​意外と​知らない​ことだらけ。<br/>​「自分には​何が​必要？」<br/>が​サクッと​分かる​サービスです。​</p>
 
         <div className={questionaire}>
@@ -67,10 +93,15 @@ export function TaxyScreen() {
             <>
               <h2>{question}</h2>
               <div className={button_wrapper}>
-                <button onClick={() => answerQuestion(true)}>はい</button>
-                <button onClick={() => answerQuestion(false)}>いいえ</button>
+                <button className={answerButton} onClick={() => answerQuestion(true)}>はい</button>
+                <button className={answerButton} onClick={() => answerQuestion(false)}>いいえ</button>
               </div>
             </>
+          )}
+          {(questionNumber > 1 || result !== null) && (
+            <button className={backButton} onClick={goBack}>
+              ← 1問前に戻る
+            </button>
           )}
         </div>
 
@@ -144,7 +175,23 @@ const body = css({
 const button_wrapper = css({
   display: "flex",
   gap: "1.2rem",
+  marginTop: "1rem",
 })
+
+const answerButton = css({
+  padding: "0.4rem 1rem",
+  borderRadius: "999px",
+  border: "1px solid",
+  borderColor: "taxy.ink",
+  cursor: "pointer",
+});
+
+const backButton = css({
+  marginTop: "0.75rem",
+  color: "taxy.body",
+  fontSize: "0.9rem",
+  cursor: "pointer",
+});
 
 const eyebrow = css({
   margin: 0,
@@ -165,6 +212,8 @@ const questionaire = css({
   justifyContent: "center",
   gap: "0.75rem",
   textAlign: "center",
+  transform: "translateY(-2rem)",
+  fontSize: "1.2rem",
 })
 
 const logo = css({
