@@ -1,69 +1,201 @@
 import { css } from "styled-system/css";
 import { useState } from "react";
 
-type Answer = boolean;
+export interface TaxyAnswers {
+  // 金額 (円)
+  partTimeIncome: string; // Q1: アルバイト給料
+  otherIncomeProfit: string; // Q2-1: アルバイト以外の利益
+  unadjustedIncome: string; // Q4-2: 年末調整していないバイト先からの給料合計
+  allowanceAmount: string; // Q6-2: 年間仕送り額
+
+  // フラグ (YES / NO)
+  hasOtherIncome: boolean | null; // Q2: アルバイト以外でお金を稼いだか
+  isAge19to22: boolean | null; // Q3: 今年の12月31日時点で19歳以上23歳未満か
+  hasMultipleJobs: boolean | null; // Q4: アルバイト先は2か所以上あるか
+  didYearEndAdjustment: boolean | null; // Q4-1: 年末調整をしたか
+  isCoveredByInsurance: boolean | null; // Q5: 保護者の健康保険の扶養に入っているか
+  isLivingWithParents: boolean | null; // Q6: 保護者と一緒に暮らしているか
+  isIncomeLessThanHalfParent: boolean | null; // Q6-1: 保護者の年収の半分を下回っているか
+}
+
+type StepKey =
+  | "1"
+  | "2"
+  | "2-1"
+  | "3"
+  | "4"
+  | "4-1"
+  | "4-2"
+  | "5"
+  | "6"
+  | "6-1"
+  | "6-2"
+  | "result";
+
+type QuestionConfig = {
+  stepNumber: string;
+  text: string;
+  type: "amount" | "boolean";
+  amountField?: keyof Pick<
+    TaxyAnswers,
+    "partTimeIncome" | "otherIncomeProfit" | "unadjustedIncome" | "allowanceAmount"
+  >;
+  placeholder?: string;
+};
+
+const QUESTIONS: Record<Exclude<StepKey, "result">, QuestionConfig> = {
+  "1": {
+    stepNumber: "1",
+    text: "今年、アルバイトでもらう給料は全部でいくらくらいになりそうですか？",
+    type: "amount",
+    amountField: "partTimeIncome",
+    placeholder: "例: 1030000",
+  },
+  "2": {
+    stepNumber: "2",
+    text: "アルバイト以外でお金を稼ぎましたか？",
+    type: "boolean",
+  },
+  "2-1": {
+    stepNumber: "2-1",
+    text: "そこから得た利益はいくらですか？",
+    type: "amount",
+    amountField: "otherIncomeProfit",
+    placeholder: "例: 200000",
+  },
+  "3": {
+    stepNumber: "3",
+    text: "今年の12月31日時点で19歳以上23歳未満ですか？",
+    type: "boolean",
+  },
+  "4": {
+    stepNumber: "4",
+    text: "アルバイト先は2か所以上ありますか？",
+    type: "boolean",
+  },
+  "4-1": {
+    stepNumber: "4-1",
+    text: "年末調整をしましたか？",
+    type: "boolean",
+  },
+  "4-2": {
+    stepNumber: "4-2",
+    text: "年末調整していないバイト先からもらった給料の合計はいくらですか？",
+    type: "amount",
+    amountField: "unadjustedIncome",
+    placeholder: "例: 150000",
+  },
+  "5": {
+    stepNumber: "5",
+    text: "今、保護者の健康保険の扶養に入っていますか？",
+    type: "boolean",
+  },
+  "6": {
+    stepNumber: "6",
+    text: "保護者と一緒に暮らしていますか？",
+    type: "boolean",
+  },
+  "6-1": {
+    stepNumber: "6-1",
+    text: "今年稼いだ金額は、保護者の年収の半分を下回っていますか？",
+    type: "boolean",
+  },
+  "6-2": {
+    stepNumber: "6-2",
+    text: "保護者から年間いくらくらい仕送りを受けていますか？",
+    type: "amount",
+    amountField: "allowanceAmount",
+    placeholder: "例: 600000",
+  },
+};
+
+const initialAnswers: TaxyAnswers = {
+  partTimeIncome: "",
+  otherIncomeProfit: "",
+  unadjustedIncome: "",
+  allowanceAmount: "",
+  hasOtherIncome: null,
+  isAge19to22: null,
+  hasMultipleJobs: null,
+  didYearEndAdjustment: null,
+  isCoveredByInsurance: null,
+  isLivingWithParents: null,
+  isIncomeLessThanHalfParent: null,
+};
 
 export function TaxyScreen() {
-  const [income, setIncome] = useState<string>("");
-  const [answers, setAnswers] = useState<Record<number, boolean | null>>({});
-  const [questionNumber, setQuestionNumber] = useState(0);
-  const [result, setResult] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<TaxyAnswers>(initialAnswers);
+  const [step, setStep] = useState<StepKey>("1");
+  const [amountInput, setAmountInput] = useState<string>("");
 
-  let question = "";
-
-  if (questionNumber === 0) {
-    question = "昨年の年収（給与収入）を入力してください";
-  } else if (questionNumber === 1) {
-    question = "昨年働いたことのあるバイト先は1か所ですか？";
-  } else if (questionNumber === 2 && answers[1] === true) {
-    question = "バイト先で年末調整をしましたか？（扶養控除等（異動）申告書を出しましたか？）";
-  } else if (questionNumber === 2 && answers[1] === false) {
-    question = "どこかのバイト先で年末調整をしましたか？（扶養控除等（異動）申告書を出しましたか？）";
-  } else if (questionNumber === 3 && answers[1] === true) {
-    question = "バイト先以外で稼いだ所得は20万円以下ですか？";
-  } else if (questionNumber === 3 && answers[1] === false) {
-    question = "年末調整をしていない全てのバイト先の収入と、バイト先以外で稼いだお金の合計は20万円以下ですか？";
-  }
-
-  const handleIncomeSubmit = (e: React.FormEvent) => {
+  const handleAmountSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (income.trim() === "") return;
-    setQuestionNumber(1);
+    if (amountInput.trim() === "") return;
+
+    const currentConfig = QUESTIONS[step as Exclude<StepKey, "result">];
+    const field = currentConfig.amountField;
+    const value = amountInput.trim();
+
+    if (field) {
+      setAnswers((prev) => ({ ...prev, [field]: value }));
+    }
+    setAmountInput("");
+
+    if (step === "1") {
+      setStep("2");
+    } else if (step === "2-1") {
+      setStep("3");
+    } else if (step === "4-2") {
+      setStep("5");
+    } else if (step === "6-2") {
+      setStep("result");
+    }
   };
 
-  const answerQuestion = (answer: Answer) => {
-    setAnswers((currentAnswers) => ({
-      ...currentAnswers,
-      [questionNumber]: answer,
-    }));
-
-    if (questionNumber === 1) {
-      setQuestionNumber(2);
-      return;
-    }
-
-    if (questionNumber === 2) {
-      if (answer === false) {
-        setResult("確定申告必要");
+  const handleBooleanAnswer = (value: boolean) => {
+    if (step === "2") {
+      setAnswers((prev) => ({ ...prev, hasOtherIncome: value }));
+      if (value) {
+        setStep("2-1");
       } else {
-        setQuestionNumber(3);
+        setStep("3");
       }
-      return;
-    }
-
-    if (answers[1] === true) {
-      setResult(answer ? "確定申告必要" : "確定申告不要");
-    } else {
-      setResult(answer ? "確定申告不要" : "確定申告必要");
+    } else if (step === "3") {
+      setAnswers((prev) => ({ ...prev, isAge19to22: value }));
+      setStep("4");
+    } else if (step === "4") {
+      setAnswers((prev) => ({ ...prev, hasMultipleJobs: value }));
+      setStep("4-1");
+    } else if (step === "4-1") {
+      setAnswers((prev) => ({ ...prev, didYearEndAdjustment: value }));
+      if (answers.hasMultipleJobs === true) {
+        setStep("4-2");
+      } else {
+        setStep("5");
+      }
+    } else if (step === "5") {
+      setAnswers((prev) => ({ ...prev, isCoveredByInsurance: value }));
+      setStep("6");
+    } else if (step === "6") {
+      setAnswers((prev) => ({ ...prev, isLivingWithParents: value }));
+      if (value) {
+        setStep("6-1");
+      } else {
+        setStep("6-2");
+      }
+    } else if (step === "6-1") {
+      setAnswers((prev) => ({ ...prev, isIncomeLessThanHalfParent: value }));
+      setStep("result");
     }
   };
 
   const resetAll = () => {
-    setIncome("");
-    setAnswers({});
-    setQuestionNumber(0);
-    setResult(null);
+    setAnswers(initialAnswers);
+    setAmountInput("");
+    setStep("1");
   };
+
+  const currentQuestion = step !== "result" ? QUESTIONS[step] : null;
 
   return (
     <div className={screen}>
@@ -72,57 +204,54 @@ export function TaxyScreen() {
       </header>
 
       <main className={body}>
-        
         <h1 className={logo}>TAXY</h1>
-        <p className={tagline}>税金って、​意外と​知らない​ことだらけ。<br/>​「自分には​何が​必要？」<br/>が​サクッと​分かる​サービスです。​</p>
+        <p className={tagline}>
+          税金って、​意外と​知らない​ことだらけ。<br />
+          ​「自分には​何が​必要？」<br />
+          が​サクッと​分かる​サービスです。​
+        </p>
 
         <div className={questionaire}>
-          {result ? (
+          {step === "result" ? (
             <div className={result_container}>
-              <h2>{result}</h2>
-              <button onClick={resetAll} className={button}>
-                もう一度診断する
-              </button>
+              <h2>診断完了</h2>
+              <p className={tagline}>回答が完了しました。（判定ロジック準備中）</p>
+              <button onClick={resetAll}>もう一度診断する</button>
             </div>
-          ) : questionNumber === 0 ? (
-            <form onSubmit={handleIncomeSubmit} className={form_wrapper}>
-              <h2>{question}</h2>
-              <div className={input_wrapper}>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="例: 1030000"
-                  value={income}
-                  onChange={(e) => setIncome(e.target.value)}
-                  className={input_field}
-                  autoFocus
-                  required
-                />
-                <span className={input_unit}>円</span>
-              </div>
-              <button
-                type="submit"
-                disabled={income.trim() === ""}
-                className={button}
-              >
-                次へ
-              </button>
-            </form>
-          ) : (
-            <>
-              <h2>{question}</h2>
-              <div className={button_wrapper}>
-                <button onClick={() => answerQuestion(true)} className={button}>はい</button>
-                <button onClick={() => answerQuestion(false)} className={button}>いいえ</button>
-              </div>
-            </>
-          )}
+          ) : currentQuestion ? (
+            currentQuestion.type === "amount" ? (
+              <form onSubmit={handleAmountSubmit} className={form_wrapper}>
+                <h2>{currentQuestion.text}</h2>
+                <div className={input_wrapper}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder={currentQuestion.placeholder ?? "例: 100"}
+                    value={amountInput}
+                    onChange={(e) => setAmountInput(e.target.value)}
+                    className={input_field}
+                    autoFocus
+                    required
+                  />
+                  <span className={input_unit}>円</span>
+                </div>
+                <button type="submit" disabled={amountInput.trim() === ""}>
+                  次へ
+                </button>
+              </form>
+            ) : (
+              <>
+                <h2>{currentQuestion.text}</h2>
+                <div className={button_wrapper}>
+                  <button onClick={() => handleBooleanAnswer(true)}>はい</button>
+                  <button onClick={() => handleBooleanAnswer(false)}>いいえ</button>
+                </div>
+              </>
+            )
+          ) : null}
         </div>
-
       </main>
-      
-
     </div>
   );
 }
@@ -131,8 +260,7 @@ const screen = css({
   display: "flex",
   flexDirection: "column",
   height: "100%",
-  background:
-    "linear-gradient(180deg, #ffffff)",
+  background: "#ffffff",
 });
 
 const status = css({
@@ -142,38 +270,6 @@ const status = css({
   padding: "14px 28px 0",
   fontSize: "0.8rem",
   fontWeight: "600",
-});
-
-const statusIcons = css({
-  display: "flex",
-  alignItems: "center",
-  gap: "4px",
-});
-
-const iconWeak = css({
-  display: "block",
-  height: "8px",
-  borderRadius: "2px",
-  background: "currentColor",
-  width: "14px",
-  opacity: 0.55,
-});
-
-const iconMid = css({
-  display: "block",
-  height: "8px",
-  borderRadius: "2px",
-  background: "currentColor",
-  width: "10px",
-  opacity: 0.75,
-});
-
-const iconStrong = css({
-  display: "block",
-  height: "8px",
-  borderRadius: "2px",
-  background: "currentColor",
-  width: "18px",
 });
 
 const body = css({
@@ -190,17 +286,7 @@ const body = css({
 const button_wrapper = css({
   display: "flex",
   gap: "1.2rem",
-})
-
-const eyebrow = css({
-  margin: 0,
-  fontSize: "0.7rem",
-  fontWeight: "600",
-  letterSpacing: "0.2em",
-  textTransform: "uppercase",
-  color: "taxy.muted",
 });
-
 
 const questionaire = css({
   margin: 2,
@@ -211,7 +297,7 @@ const questionaire = css({
   justifyContent: "center",
   gap: "0.75rem",
   textAlign: "center",
-})
+});
 
 const logo = css({
   margin: 0,
@@ -235,7 +321,7 @@ const form_wrapper = css({
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: "1.2rem",
+  gap: "0.9rem",
   width: "100%",
 });
 
@@ -244,22 +330,22 @@ const input_wrapper = css({
   alignItems: "center",
   justifyContent: "center",
   gap: "0.6rem",
-  margin: "0.5rem 0",
+  margin: "0.2rem 0",
 });
 
 const input_field = css({
-  padding: "0.8rem 1.2rem",
+  padding: "0.7rem 1.1rem",
   fontSize: "1.2rem",
   fontWeight: "600",
-  borderRadius: "14px",
+  borderRadius: "12px",
   border: "2px solid",
   borderColor: "taxy.muted",
   background: "#fff",
   color: "taxy.ink",
-  width: "180px",
+  width: "240px",
   textAlign: "right",
   outline: "none",
-  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
+  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.06)",
   transition: "all 0.2s ease",
   _focus: {
     borderColor: "taxy.amber",
@@ -273,34 +359,9 @@ const input_unit = css({
   color: "taxy.ink",
 });
 
-const button = css({
-  padding: "0.7rem 2.2rem",
-  fontSize: "1.1rem",
-  fontWeight: "700",
-  borderRadius: "9999px",
-  background: "taxy.ink",
-  color: "taxy.cream",
-  border: "none",
-  cursor: "pointer",
-  transition: "all 0.15s ease",
-  _hover: {
-    opacity: 0.85,
-    transform: "scale(1.02)",
-  },
-  _active: {
-    transform: "scale(0.98)",
-  },
-  _disabled: {
-    opacity: 0.35,
-    cursor: "not-allowed",
-    transform: "none",
-  },
-});
-
 const result_container = css({
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: "1.2rem",
+  gap: "0.75rem",
 });
-
