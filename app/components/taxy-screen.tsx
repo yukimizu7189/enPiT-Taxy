@@ -238,7 +238,7 @@ export function TaxyScreen() {
           ) : currentQuestion ? (
             currentQuestion.type === "amount" ? (
               <form onSubmit={handleAmountSubmit} className={form_wrapper}>
-                <h2>{currentQuestion.text}</h2>
+                <h2 className={question_text}>{currentQuestion.text}</h2>
                 <div className={input_wrapper}>
                   <input
                     type="number"
@@ -262,8 +262,8 @@ export function TaxyScreen() {
                 </button>
               </form>
             ) : (
-              <>
-                <h2>{currentQuestion.text}</h2>
+              <div className={question_box}>
+                <h2 className={question_text}>{currentQuestion.text}</h2>
                 <div className={button_wrapper}>
                   <button
                     className={answerButton}
@@ -278,7 +278,7 @@ export function TaxyScreen() {
                     いいえ
                   </button>
                 </div>
-              </>
+              </div>
             )
           ) : null}
 
@@ -302,8 +302,7 @@ const screen = css({
   display: "flex",
   flexDirection: "column",
   height: "100%",
-  background:
-    "linear-gradient(180deg, #fff9ef 0%, {colors.taxy.cream} 40%, #efe8dc 100%)",
+  background: "#ffffff",
 });
 
 const status = css({
@@ -354,7 +353,7 @@ const body = css({
   alignItems: "center",
   justifyContent: "center",
   gap: "0.75rem",
-  padding: "2rem 1.5rem 3rem",
+  padding: "2rem 1rem 3rem",
   textAlign: "center",
 });
 
@@ -409,6 +408,8 @@ const eyebrow = css({
 const questionaire = css({
   margin: 2,
   flex: 10,
+  width: "100%",
+  maxWidth: "360px",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -437,12 +438,33 @@ const tagline = css({
   color: "taxy.body",
 });
 
+const question_box = css({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "1.2rem",
+  width: "100%",
+  padding: "0 0.5rem",
+});
+
 const form_wrapper = css({
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: "0.9rem",
+  gap: "1.2rem",
   width: "100%",
+  padding: "0 0.5rem",
+});
+
+const question_text = css({
+  margin: 0,
+  width: "100%",
+  fontSize: "1.1rem",
+  fontWeight: "700",
+  lineHeight: 1.55,
+  color: "taxy.ink",
+  textAlign: "left",
+  letterSpacing: "0.02em",
 });
 
 const input_wrapper = css({
