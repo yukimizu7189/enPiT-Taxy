@@ -123,11 +123,49 @@ const initialAnswers: TaxyAnswers = {
   isIncomeLessThanHalfParent: null,
 };
 
+function calculateResults(answers: TaxyAnswers) {
+  const q1 = Number(answers.partTimeIncome) || 0;
+  const q2 = answers.hasOtherIncome;
+  const q2_1 = q2 ? Number(answers.otherIncomeProfit) || 0 : 0;
+  const q4 = answers.hasMultipleJobs;
+  const q4_2 = q4 ? Number(answers.unadjustedIncome) || 0 : 0;
+
+  // A1判定
+  let a1Result = "";
+  if (q4 === false) {
+    if (q2 === false) {
+      a1Result = "年末調整";
+    } else if (q2_1 > 200000) {
+      a1Result = "年末調整＋確定申告";
+    } else {
+      a1Result = "年末調整＋住民税申告";
+    }
+  } else if (q4 === true) {
+    if (q2_1 + q4_2 > 200000) {
+      a1Result = "確定申告";
+    } else {
+      a1Result = "原則、住民税申告";
+    }
+  }
+
+  // A2判定: 1 + 2-1 = 108万～163万 かつ 2-1 が10万円以下 -> 勤労学生控除の申請を出す
+  const totalIncome = q1 + q2_1;
+  const applyWorkingStudentDeduction =
+    totalIncome >= 1080000 && totalIncome <= 1630000 && q2_1 <= 100000;
+
+  return {
+    a1Result,
+    applyWorkingStudentDeduction,
+  };
+}
+
 export function TaxyScreen() {
   const [answers, setAnswers] = useState<TaxyAnswers>(initialAnswers);
   const [step, setStep] = useState<StepKey>("1");
   const [stepHistory, setStepHistory] = useState<StepKey[]>([]);
   const [amountInput, setAmountInput] = useState<string>("");
+
+  const results = calculateResults(answers);
 
   const goToNextStep = (nextStep: StepKey) => {
     setStepHistory((prev) => [...prev, step]);
@@ -229,8 +267,24 @@ export function TaxyScreen() {
         <div className={questionaire}>
           {step === "result" ? (
             <div className={result_container}>
-              <h2>診断完了</h2>
-              <p className={tagline}>回答が完了しました。（判定ロジック準備中）</p>
+              <h2 className={result_main_title}>診断結果</h2>
+
+              {/* A1: 全員に表示 */}
+              <div className={result_card}>
+                <div className={result_label}>必要な手続き</div>
+                <div className={result_value}>{results.a1Result}</div>
+              </div>
+
+              {/* A2: 条件該当者のみ表示 */}
+              {results.applyWorkingStudentDeduction && (
+                <div className={result_card_accent}>
+                  <div className={result_label_accent}>申請おすすめ</div>
+                  <div className={result_value_accent}>
+                    勤労学生控除を申請する
+                  </div>
+                </div>
+              )}
+
               <button className={answerButton} onClick={restartQuestionnaire}>
                 もう一度診断する
               </button>
@@ -463,7 +517,7 @@ const question_text = css({
   fontWeight: "700",
   lineHeight: 1.55,
   color: "taxy.ink",
-  textAlign: "left",
+  textAlign: "center",
   letterSpacing: "0.02em",
 });
 
@@ -485,7 +539,7 @@ const input_field = css({
   background: "#fff",
   color: "taxy.ink",
   width: "240px",
-  textAlign: "right",
+  textAlign: "center",
   outline: "none",
   boxShadow: "0 2px 6px rgba(0, 0, 0, 0.06)",
   transition: "all 0.2s ease",
@@ -505,5 +559,67 @@ const result_container = css({
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  gap: "0.75rem",
+  gap: "1rem",
+  width: "100%",
+  maxWidth: "340px",
+});
+
+const result_main_title = css({
+  margin: "0 0 0.5rem",
+  fontSize: "1.3rem",
+  fontWeight: "800",
+  color: "taxy.ink",
+});
+
+const result_card = css({
+  width: "100%",
+  padding: "1.1rem 1.2rem",
+  borderRadius: "14px",
+  background: "#f8f7f5",
+  border: "1px solid",
+  borderColor: "rgba(0, 0, 0, 0.08)",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "0.4rem",
+  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+});
+
+const result_label = css({
+  fontSize: "0.8rem",
+  fontWeight: "600",
+  color: "taxy.body",
+  letterSpacing: "0.05em",
+});
+
+const result_value = css({
+  fontSize: "1.3rem",
+  fontWeight: "800",
+  color: "taxy.ink",
+});
+
+const result_card_accent = css({
+  width: "100%",
+  padding: "1rem 1.2rem",
+  borderRadius: "14px",
+  background: "rgba(240, 180, 41, 0.1)",
+  border: "1.5px solid",
+  borderColor: "taxy.amber",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "0.3rem",
+});
+
+const result_label_accent = css({
+  fontSize: "0.8rem",
+  fontWeight: "700",
+  color: "#996b00",
+  letterSpacing: "0.05em",
+});
+
+const result_value_accent = css({
+  fontSize: "1.2rem",
+  fontWeight: "800",
+  color: "taxy.ink",
 });
