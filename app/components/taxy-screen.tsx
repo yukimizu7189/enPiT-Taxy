@@ -4,13 +4,16 @@ import { useState } from "react";
 type Answer = boolean;
 
 export function TaxyScreen() {
+  const [income, setIncome] = useState<string>("");
   const [answers, setAnswers] = useState<Record<number, boolean | null>>({});
-  const [questionNumber, setQuestionNumber] = useState(1);
+  const [questionNumber, setQuestionNumber] = useState(0);
   const [result, setResult] = useState<string | null>(null);
 
   let question = "";
 
-  if (questionNumber === 1) {
+  if (questionNumber === 0) {
+    question = "昨年の年収（給与収入）を入力してください";
+  } else if (questionNumber === 1) {
     question = "昨年働いたことのあるバイト先は1か所ですか？";
   } else if (questionNumber === 2 && answers[1] === true) {
     question = "バイト先で年末調整をしましたか？（扶養控除等（異動）申告書を出しましたか？）";
@@ -21,6 +24,12 @@ export function TaxyScreen() {
   } else if (questionNumber === 3 && answers[1] === false) {
     question = "年末調整をしていない全てのバイト先の収入と、バイト先以外で稼いだお金の合計は20万円以下ですか？";
   }
+
+  const handleIncomeSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (income.trim() === "") return;
+    setQuestionNumber(1);
+  };
 
   const answerQuestion = (answer: Answer) => {
     setAnswers((currentAnswers) => ({
@@ -49,6 +58,13 @@ export function TaxyScreen() {
     }
   };
 
+  const resetAll = () => {
+    setIncome("");
+    setAnswers({});
+    setQuestionNumber(0);
+    setResult(null);
+  };
+
   return (
     <div className={screen}>
       <header className={status}>
@@ -62,13 +78,43 @@ export function TaxyScreen() {
 
         <div className={questionaire}>
           {result ? (
-            <h2>{result}</h2>
+            <div className={result_container}>
+              <h2>{result}</h2>
+              <button onClick={resetAll} className={button}>
+                もう一度診断する
+              </button>
+            </div>
+          ) : questionNumber === 0 ? (
+            <form onSubmit={handleIncomeSubmit} className={form_wrapper}>
+              <h2>{question}</h2>
+              <div className={input_wrapper}>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  placeholder="例: 1030000"
+                  value={income}
+                  onChange={(e) => setIncome(e.target.value)}
+                  className={input_field}
+                  autoFocus
+                  required
+                />
+                <span className={input_unit}>円</span>
+              </div>
+              <button
+                type="submit"
+                disabled={income.trim() === ""}
+                className={button}
+              >
+                次へ
+              </button>
+            </form>
           ) : (
             <>
               <h2>{question}</h2>
               <div className={button_wrapper}>
-                <button onClick={() => answerQuestion(true)}>はい</button>
-                <button onClick={() => answerQuestion(false)}>いいえ</button>
+                <button onClick={() => answerQuestion(true)} className={button}>はい</button>
+                <button onClick={() => answerQuestion(false)} className={button}>いいえ</button>
               </div>
             </>
           )}
@@ -86,7 +132,7 @@ const screen = css({
   flexDirection: "column",
   height: "100%",
   background:
-    "linear-gradient(180deg, #fff9ef 0%, {colors.taxy.cream} 40%, #efe8dc 100%)",
+    "linear-gradient(180deg, #ffffff)",
 });
 
 const status = css({
@@ -184,3 +230,77 @@ const tagline = css({
   lineHeight: 1.6,
   color: "taxy.body",
 });
+
+const form_wrapper = css({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "1.2rem",
+  width: "100%",
+});
+
+const input_wrapper = css({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "0.6rem",
+  margin: "0.5rem 0",
+});
+
+const input_field = css({
+  padding: "0.8rem 1.2rem",
+  fontSize: "1.2rem",
+  fontWeight: "600",
+  borderRadius: "14px",
+  border: "2px solid",
+  borderColor: "taxy.muted",
+  background: "#fff",
+  color: "taxy.ink",
+  width: "180px",
+  textAlign: "right",
+  outline: "none",
+  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
+  transition: "all 0.2s ease",
+  _focus: {
+    borderColor: "taxy.amber",
+    boxShadow: "0 0 0 3px rgba(240, 180, 41, 0.35)",
+  },
+});
+
+const input_unit = css({
+  fontSize: "1.1rem",
+  fontWeight: "600",
+  color: "taxy.ink",
+});
+
+const button = css({
+  padding: "0.7rem 2.2rem",
+  fontSize: "1.1rem",
+  fontWeight: "700",
+  borderRadius: "9999px",
+  background: "taxy.ink",
+  color: "taxy.cream",
+  border: "none",
+  cursor: "pointer",
+  transition: "all 0.15s ease",
+  _hover: {
+    opacity: 0.85,
+    transform: "scale(1.02)",
+  },
+  _active: {
+    transform: "scale(0.98)",
+  },
+  _disabled: {
+    opacity: 0.35,
+    cursor: "not-allowed",
+    transform: "none",
+  },
+});
+
+const result_container = css({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "1.2rem",
+});
+
