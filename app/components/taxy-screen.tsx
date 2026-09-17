@@ -153,9 +153,46 @@ function calculateResults(answers: TaxyAnswers) {
   const applyWorkingStudentDeduction =
     totalIncome >= 1080000 && totalIncome <= 1630000 && q2_1 <= 100000;
 
+  // A3判定: 社会保険扶養（自己加入の要否）
+  const q3 = answers.isAge19to22;
+  const q5 = answers.isCoveredByInsurance;
+  const q6 = answers.isLivingWithParents;
+  const q6_1 = answers.isIncomeLessThanHalfParent;
+  const q6_2 = q6 === false ? Number(answers.allowanceAmount) || 0 : 0;
+
+  let needSelfSocialInsurance = false;
+  if (q5 === false) {
+    needSelfSocialInsurance = true;
+  } else if (q5 === true) {
+    if (q6 === true) {
+      // 同居
+      if (q6_1 === false) {
+        needSelfSocialInsurance = true;
+      } else if (q6_1 === true) {
+        if (q3 === true && totalIncome > 1500000) {
+          needSelfSocialInsurance = true;
+        } else if (q3 === false && totalIncome > 1300000) {
+          needSelfSocialInsurance = true;
+        }
+      }
+    } else if (q6 === false) {
+      // 別居
+      if (totalIncome > q6_2) {
+        needSelfSocialInsurance = true;
+      } else if (q6_2 >= totalIncome) {
+        if (q3 === true && totalIncome > 1500000) {
+          needSelfSocialInsurance = true;
+        } else if (q3 === false && totalIncome > 1300000) {
+          needSelfSocialInsurance = true;
+        }
+      }
+    }
+  }
+
   return {
     a1Result,
     applyWorkingStudentDeduction,
+    needSelfSocialInsurance,
   };
 }
 
@@ -281,6 +318,16 @@ export function TaxyScreen() {
                   <div className={result_label_accent}>申請おすすめ</div>
                   <div className={result_value_accent}>
                     勤労学生控除を申請する
+                  </div>
+                </div>
+              )}
+
+              {/* A3: 条件該当者のみ表示 */}
+              {results.needSelfSocialInsurance && (
+                <div className={result_card_warn}>
+                  <div className={result_label_warn}>社会保険扶養</div>
+                  <div className={result_value_warn}>
+                    社会保険に自己加入
                   </div>
                 </div>
               )}
@@ -619,6 +666,32 @@ const result_label_accent = css({
 });
 
 const result_value_accent = css({
+  fontSize: "1.2rem",
+  fontWeight: "800",
+  color: "taxy.ink",
+});
+
+const result_card_warn = css({
+  width: "100%",
+  padding: "1rem 1.2rem",
+  borderRadius: "14px",
+  background: "#fdf8f6",
+  border: "1.5px solid",
+  borderColor: "#e07a5f",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "0.3rem",
+});
+
+const result_label_warn = css({
+  fontSize: "0.8rem",
+  fontWeight: "700",
+  color: "#c05621",
+  letterSpacing: "0.05em",
+});
+
+const result_value_warn = css({
   fontSize: "1.2rem",
   fontWeight: "800",
   color: "taxy.ink",
