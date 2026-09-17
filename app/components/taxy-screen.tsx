@@ -1,53 +1,290 @@
 import { css } from "styled-system/css";
 import { useState } from "react";
 
-type Answer = boolean;
+export interface TaxyAnswers {
+  // 金額 (円)
+  partTimeIncome: string; // Q1: アルバイト給料
+  otherIncomeProfit: string; // Q2-1: アルバイト以外の利益
+  unadjustedIncome: string; // Q4-2: 年末調整していないバイト先からの給料合計
+  allowanceAmount: string; // Q6-2: 年間仕送り額
 
-export function TaxyScreen() {
-  const [answers, setAnswers] = useState<Record<number, boolean | null>>({});
-  const [questionNumber, setQuestionNumber] = useState(1);
-  const [result, setResult] = useState<string | null>(null);
+  // フラグ (YES / NO)
+  hasOtherIncome: boolean | null; // Q2: アルバイト以外でお金を稼いだか
+  isAge19to22: boolean | null; // Q3: 今年の12月31日時点で19歳以上23歳未満か
+  hasMultipleJobs: boolean | null; // Q4: アルバイト先は2か所以上あるか
+  didYearEndAdjustment: boolean | null; // Q4-1: 年末調整をしたか
+  isCoveredByInsurance: boolean | null; // Q5: 保護者の健康保険の扶養に入っているか
+  isLivingWithParents: boolean | null; // Q6: 保護者と一緒に暮らしているか
+  isIncomeLessThanHalfParent: boolean | null; // Q6-1: 保護者の年収の半分を下回っているか
+}
 
-  let question = "";
+type StepKey =
+  | "1"
+  | "2"
+  | "2-1"
+  | "3"
+  | "4"
+  | "4-1"
+  | "4-2"
+  | "5"
+  | "6"
+  | "6-1"
+  | "6-2"
+  | "result";
 
-  if (questionNumber === 1) {
-    question = "昨年働いたことのあるバイト先は1か所ですか？";
-  } else if (questionNumber === 2 && answers[1] === true) {
-    question = "バイト先で年末調整をしましたか？（扶養控除等（異動）申告書を出しましたか？）";
-  } else if (questionNumber === 2 && answers[1] === false) {
-    question = "どこかのバイト先で年末調整をしましたか？（扶養控除等（異動）申告書を出しましたか？）";
-  } else if (questionNumber === 3 && answers[1] === true) {
-    question = "バイト先以外で稼いだ所得は20万円以下ですか？";
-  } else if (questionNumber === 3 && answers[1] === false) {
-    question = "年末調整をしていない全てのバイト先の収入と、バイト先以外で稼いだお金の合計は20万円以下ですか？";
+type QuestionConfig = {
+  stepNumber: string;
+  text: string;
+  type: "amount" | "boolean";
+  amountField?: keyof Pick<
+    TaxyAnswers,
+    "partTimeIncome" | "otherIncomeProfit" | "unadjustedIncome" | "allowanceAmount"
+  >;
+  placeholder?: string;
+};
+
+const QUESTIONS: Record<Exclude<StepKey, "result">, QuestionConfig> = {
+  "1": {
+    stepNumber: "1",
+    text: "今年、アルバイトでもらう給料は全部でいくらくらいになりそうですか？",
+    type: "amount",
+    amountField: "partTimeIncome",
+    placeholder: "例: 1030000",
+  },
+  "2": {
+    stepNumber: "2",
+    text: "アルバイト以外でお金を稼ぎましたか？",
+    type: "boolean",
+  },
+  "2-1": {
+    stepNumber: "2-1",
+    text: "そこから得た利益はいくらですか？",
+    type: "amount",
+    amountField: "otherIncomeProfit",
+    placeholder: "例: 200000",
+  },
+  "3": {
+    stepNumber: "3",
+    text: "今年の12月31日時点で19歳以上23歳未満ですか？",
+    type: "boolean",
+  },
+  "4": {
+    stepNumber: "4",
+    text: "アルバイト先は2か所以上ありますか？",
+    type: "boolean",
+  },
+  "4-1": {
+    stepNumber: "4-1",
+    text: "年末調整をしましたか？",
+    type: "boolean",
+  },
+  "4-2": {
+    stepNumber: "4-2",
+    text: "年末調整していないバイト先からもらった給料の合計はいくらですか？",
+    type: "amount",
+    amountField: "unadjustedIncome",
+    placeholder: "例: 150000",
+  },
+  "5": {
+    stepNumber: "5",
+    text: "今、保護者の健康保険の扶養に入っていますか？",
+    type: "boolean",
+  },
+  "6": {
+    stepNumber: "6",
+    text: "保護者と一緒に暮らしていますか？",
+    type: "boolean",
+  },
+  "6-1": {
+    stepNumber: "6-1",
+    text: "今年稼いだ金額は、保護者の年収の半分を下回っていますか？",
+    type: "boolean",
+  },
+  "6-2": {
+    stepNumber: "6-2",
+    text: "保護者から年間いくらくらい仕送りを受けていますか？",
+    type: "amount",
+    amountField: "allowanceAmount",
+    placeholder: "例: 600000",
+  },
+};
+
+const initialAnswers: TaxyAnswers = {
+  partTimeIncome: "",
+  otherIncomeProfit: "",
+  unadjustedIncome: "",
+  allowanceAmount: "",
+  hasOtherIncome: null,
+  isAge19to22: null,
+  hasMultipleJobs: null,
+  didYearEndAdjustment: null,
+  isCoveredByInsurance: null,
+  isLivingWithParents: null,
+  isIncomeLessThanHalfParent: null,
+};
+
+function calculateResults(answers: TaxyAnswers) {
+  const q1 = Number(answers.partTimeIncome) || 0;
+  const q2 = answers.hasOtherIncome;
+  const q2_1 = q2 ? Number(answers.otherIncomeProfit) || 0 : 0;
+  const q4 = answers.hasMultipleJobs;
+  const q4_2 = q4 ? Number(answers.unadjustedIncome) || 0 : 0;
+
+  // A1判定
+  let a1Result = "";
+  if (q4 === false) {
+    if (q2 === false) {
+      a1Result = "年末調整";
+    } else if (q2_1 > 200000) {
+      a1Result = "年末調整＋確定申告";
+    } else {
+      a1Result = "年末調整＋住民税申告";
+    }
+  } else if (q4 === true) {
+    if (q2_1 + q4_2 > 200000) {
+      a1Result = "確定申告";
+    } else {
+      a1Result = "原則、住民税申告";
+    }
   }
 
-  const answerQuestion = (answer: Answer) => {
-    setAnswers((currentAnswers) => ({
-      ...currentAnswers,
-      [questionNumber]: answer,
-    }));
+  // A2判定: 1 + 2-1 = 108万～163万 かつ 2-1 が10万円以下 -> 勤労学生控除の申請を出す
+  const totalIncome = q1 + q2_1;
+  const applyWorkingStudentDeduction =
+    totalIncome >= 1080000 && totalIncome <= 1630000 && q2_1 <= 100000;
 
-    if (questionNumber === 1) {
-      setQuestionNumber(2);
-      return;
-    }
+  // A3判定: 社会保険扶養（自己加入の要否）
+  const q3 = answers.isAge19to22;
+  const q5 = answers.isCoveredByInsurance;
+  const q6 = answers.isLivingWithParents;
+  const q6_1 = answers.isIncomeLessThanHalfParent;
+  const q6_2 = q6 === false ? Number(answers.allowanceAmount) || 0 : 0;
 
-    if (questionNumber === 2) {
-      if (answer === false) {
-        setResult("確定申告必要");
-      } else {
-        setQuestionNumber(3);
+  let needSelfSocialInsurance = false;
+  if (q5 === false) {
+    needSelfSocialInsurance = true;
+  } else if (q5 === true) {
+    if (q6 === true) {
+      // 同居
+      if (q6_1 === false) {
+        needSelfSocialInsurance = true;
+      } else if (q6_1 === true) {
+        if (q3 === true && totalIncome > 1500000) {
+          needSelfSocialInsurance = true;
+        } else if (q3 === false && totalIncome > 1300000) {
+          needSelfSocialInsurance = true;
+        }
       }
-      return;
+    } else if (q6 === false) {
+      // 別居
+      if (totalIncome > q6_2) {
+        needSelfSocialInsurance = true;
+      } else if (q6_2 >= totalIncome) {
+        if (q3 === true && totalIncome > 1500000) {
+          needSelfSocialInsurance = true;
+        } else if (q3 === false && totalIncome > 1300000) {
+          needSelfSocialInsurance = true;
+        }
+      }
     }
+  }
 
-    if (answers[1] === true) {
-      setResult(answer ? "確定申告必要" : "確定申告不要");
-    } else {
-      setResult(answer ? "確定申告不要" : "確定申告必要");
+  return {
+    a1Result,
+    applyWorkingStudentDeduction,
+    needSelfSocialInsurance,
+  };
+}
+
+export function TaxyScreen() {
+  const [answers, setAnswers] = useState<TaxyAnswers>(initialAnswers);
+  const [step, setStep] = useState<StepKey>("1");
+  const [stepHistory, setStepHistory] = useState<StepKey[]>([]);
+  const [amountInput, setAmountInput] = useState<string>("");
+
+  const results = calculateResults(answers);
+
+  const goToNextStep = (nextStep: StepKey) => {
+    setStepHistory((prev) => [...prev, step]);
+    setStep(nextStep);
+  };
+
+  const handleAmountSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (amountInput.trim() === "") return;
+
+    const currentConfig = QUESTIONS[step as Exclude<StepKey, "result">];
+    const field = currentConfig.amountField;
+    const value = amountInput.trim();
+
+    if (field) {
+      setAnswers((prev) => ({ ...prev, [field]: value }));
+    }
+    setAmountInput("");
+
+    if (step === "1") {
+      goToNextStep("2");
+    } else if (step === "2-1") {
+      goToNextStep("3");
+    } else if (step === "4-2") {
+      goToNextStep("5");
+    } else if (step === "6-2") {
+      goToNextStep("result");
     }
   };
+
+  const handleBooleanAnswer = (value: boolean) => {
+    if (step === "2") {
+      setAnswers((prev) => ({ ...prev, hasOtherIncome: value }));
+      if (value) {
+        goToNextStep("2-1");
+      } else {
+        goToNextStep("3");
+      }
+    } else if (step === "3") {
+      setAnswers((prev) => ({ ...prev, isAge19to22: value }));
+      goToNextStep("4");
+    } else if (step === "4") {
+      setAnswers((prev) => ({ ...prev, hasMultipleJobs: value }));
+      goToNextStep("4-1");
+    } else if (step === "4-1") {
+      setAnswers((prev) => ({ ...prev, didYearEndAdjustment: value }));
+      if (answers.hasMultipleJobs === true) {
+        goToNextStep("4-2");
+      } else {
+        goToNextStep("5");
+      }
+    } else if (step === "5") {
+      setAnswers((prev) => ({ ...prev, isCoveredByInsurance: value }));
+      goToNextStep("6");
+    } else if (step === "6") {
+      setAnswers((prev) => ({ ...prev, isLivingWithParents: value }));
+      if (value) {
+        goToNextStep("6-1");
+      } else {
+        goToNextStep("6-2");
+      }
+    } else if (step === "6-1") {
+      setAnswers((prev) => ({ ...prev, isIncomeLessThanHalfParent: value }));
+      goToNextStep("result");
+    }
+  };
+
+  const goBack = () => {
+    if (stepHistory.length === 0) return;
+    const previousStep = stepHistory[stepHistory.length - 1];
+    setStepHistory((prev) => prev.slice(0, -1));
+    setStep(previousStep);
+  };
+
+  const restartQuestionnaire = () => {
+    setAnswers(initialAnswers);
+    setAmountInput("");
+    setStepHistory([]);
+    setStep("1");
+  };
+
+  const currentQuestion = step !== "result" ? QUESTIONS[step] : null;
 
   return (
     <div className={screen}>
@@ -56,27 +293,108 @@ export function TaxyScreen() {
       </header>
 
       <main className={body}>
-        
         <h1 className={logo}>TAXY</h1>
-        <p className={tagline}>税金って、​意外と​知らない​ことだらけ。<br/>​「自分には​何が​必要？」<br/>が​サクッと​分かる​サービスです。​</p>
+        <p className={tagline}>大学生向け！</p>
+        <p className={tagline}>
+          税金って、​意外と​知らない​ことだらけ。<br />
+          ​「自分には​何が​必要？」<br />
+          が​サクッと​分かる​サービスです。​
+        </p>
 
         <div className={questionaire}>
-          {result ? (
-            <h2>{result}</h2>
-          ) : (
-            <>
-              <h2>{question}</h2>
-              <div className={button_wrapper}>
-                <button onClick={() => answerQuestion(true)}>はい</button>
-                <button onClick={() => answerQuestion(false)}>いいえ</button>
+          {step === "result" ? (
+            <div className={result_container}>
+              <h2 className={result_main_title}>診断結果</h2>
+
+              {/* A1: 全員に表示 */}
+              <div className={result_card}>
+                <div className={result_label}>必要な手続き</div>
+                <div className={result_value}>{results.a1Result}</div>
               </div>
-            </>
+
+              {/* A2: 条件該当者のみ表示 */}
+              {results.applyWorkingStudentDeduction && (
+                <div className={result_card_accent}>
+                  <div className={result_label_accent}>申請おすすめ</div>
+                  <div className={result_value_accent}>
+                    勤労学生控除を申請する
+                  </div>
+                </div>
+              )}
+
+              {/* A3: 条件該当者のみ表示 */}
+              {results.needSelfSocialInsurance && (
+                <div className={result_card_warn}>
+                  <div className={result_label_warn}>社会保険扶養</div>
+                  <div className={result_value_warn}>
+                    社会保険に自己加入
+                  </div>
+                </div>
+              )}
+
+              <button className={answerButton} onClick={restartQuestionnaire}>
+                もう一度診断する
+              </button>
+            </div>
+          ) : currentQuestion ? (
+            currentQuestion.type === "amount" ? (
+              <form onSubmit={handleAmountSubmit} className={form_wrapper}>
+                <h2 className={question_text}>{currentQuestion.text}</h2>
+                <div className={input_wrapper}>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder={currentQuestion.placeholder ?? "例: 100"}
+                    value={amountInput}
+                    onChange={(e) => setAmountInput(e.target.value)}
+                    className={input_field}
+                    autoFocus
+                    required
+                  />
+                  <span className={input_unit}>円</span>
+                </div>
+                <button
+                  type="submit"
+                  disabled={amountInput.trim() === ""}
+                  className={answerButton}
+                >
+                  次へ
+                </button>
+              </form>
+            ) : (
+              <div className={question_box}>
+                <h2 className={question_text}>{currentQuestion.text}</h2>
+                <div className={button_wrapper}>
+                  <button
+                    className={answerButton}
+                    onClick={() => handleBooleanAnswer(true)}
+                  >
+                    はい
+                  </button>
+                  <button
+                    className={answerButton}
+                    onClick={() => handleBooleanAnswer(false)}
+                  >
+                    いいえ
+                  </button>
+                </div>
+              </div>
+            )
+          ) : null}
+
+          {(stepHistory.length > 0 || step === "result") && (
+            <button className={backButton} onClick={goBack}>
+              ← 1問前に戻る
+            </button>
+          )}
+          {step === "result" && (
+            <button className={backButton} onClick={restartQuestionnaire}>
+              最初に戻る
+            </button>
           )}
         </div>
-
       </main>
-      
-
     </div>
   );
 }
@@ -85,8 +403,7 @@ const screen = css({
   display: "flex",
   flexDirection: "column",
   height: "100%",
-  background:
-    "linear-gradient(180deg, #fff9ef 0%, {colors.taxy.cream} 40%, #efe8dc 100%)",
+  background: "#ffffff",
 });
 
 const status = css({
@@ -137,14 +454,48 @@ const body = css({
   alignItems: "center",
   justifyContent: "center",
   gap: "0.75rem",
-  padding: "2rem 1.5rem 3rem",
+  padding: "2rem 1rem 3rem",
   textAlign: "center",
 });
 
 const button_wrapper = css({
   display: "flex",
   gap: "1.2rem",
-})
+  marginTop: "1rem",
+});
+
+const answerButton = css({
+  padding: "0.4rem 1rem",
+  borderRadius: "999px",
+  border: "1px solid",
+  borderColor: "taxy.ink",
+  cursor: "pointer",
+  background: "#fff",
+  color: "taxy.ink",
+  fontSize: "1rem",
+  transition: "all 0.15s ease",
+  _hover: {
+    background: "taxy.ink",
+    color: "taxy.cream",
+  },
+  _disabled: {
+    opacity: 0.4,
+    cursor: "not-allowed",
+  },
+});
+
+const backButton = css({
+  marginTop: "0.75rem",
+  color: "taxy.body",
+  fontSize: "0.9rem",
+  cursor: "pointer",
+  background: "none",
+  border: "none",
+  textDecoration: "underline",
+  _hover: {
+    color: "taxy.ink",
+  },
+});
 
 const eyebrow = css({
   margin: 0,
@@ -155,17 +506,20 @@ const eyebrow = css({
   color: "taxy.muted",
 });
 
-
 const questionaire = css({
   margin: 2,
   flex: 10,
+  width: "100%",
+  maxWidth: "360px",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
   gap: "0.75rem",
   textAlign: "center",
-})
+  transform: "translateY(-2rem)",
+  fontSize: "1.2rem",
+});
 
 const logo = css({
   margin: 0,
@@ -183,4 +537,162 @@ const tagline = css({
   fontSize: "0.9rem",
   lineHeight: 1.6,
   color: "taxy.body",
+});
+
+const question_box = css({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "1.2rem",
+  width: "100%",
+  padding: "0 0.5rem",
+});
+
+const form_wrapper = css({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "1.2rem",
+  width: "100%",
+  padding: "0 0.5rem",
+});
+
+const question_text = css({
+  margin: 0,
+  width: "100%",
+  fontSize: "1.1rem",
+  fontWeight: "700",
+  lineHeight: 1.55,
+  color: "taxy.ink",
+  textAlign: "center",
+  letterSpacing: "0.02em",
+});
+
+const input_wrapper = css({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "0.6rem",
+  margin: "0.2rem 0",
+});
+
+const input_field = css({
+  padding: "0.6rem 1rem",
+  fontSize: "1.1rem",
+  fontWeight: "600",
+  borderRadius: "12px",
+  border: "1px solid",
+  borderColor: "taxy.muted",
+  background: "#fff",
+  color: "taxy.ink",
+  width: "240px",
+  textAlign: "center",
+  outline: "none",
+  boxShadow: "0 2px 6px rgba(0, 0, 0, 0.06)",
+  transition: "all 0.2s ease",
+  _focus: {
+    borderColor: "taxy.amber",
+    boxShadow: "0 0 0 3px rgba(240, 180, 41, 0.35)",
+  },
+});
+
+const input_unit = css({
+  fontSize: "1.1rem",
+  fontWeight: "600",
+  color: "taxy.ink",
+});
+
+const result_container = css({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "1rem",
+  width: "100%",
+  maxWidth: "340px",
+});
+
+const result_main_title = css({
+  margin: "0 0 0.5rem",
+  fontSize: "1.3rem",
+  fontWeight: "800",
+  color: "taxy.ink",
+});
+
+const result_card = css({
+  width: "100%",
+  padding: "1.1rem 1.2rem",
+  borderRadius: "14px",
+  background: "#f8f7f5",
+  border: "1px solid",
+  borderColor: "rgba(0, 0, 0, 0.08)",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "0.4rem",
+  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
+});
+
+const result_label = css({
+  fontSize: "0.8rem",
+  fontWeight: "600",
+  color: "taxy.body",
+  letterSpacing: "0.05em",
+});
+
+const result_value = css({
+  fontSize: "1.3rem",
+  fontWeight: "800",
+  color: "taxy.ink",
+});
+
+const result_card_accent = css({
+  width: "100%",
+  padding: "1rem 1.2rem",
+  borderRadius: "14px",
+  background: "rgba(240, 180, 41, 0.1)",
+  border: "1.5px solid",
+  borderColor: "taxy.amber",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "0.3rem",
+});
+
+const result_label_accent = css({
+  fontSize: "0.8rem",
+  fontWeight: "700",
+  color: "#996b00",
+  letterSpacing: "0.05em",
+});
+
+const result_value_accent = css({
+  fontSize: "1.2rem",
+  fontWeight: "800",
+  color: "taxy.ink",
+});
+
+const result_card_warn = css({
+  width: "100%",
+  padding: "1rem 1.2rem",
+  borderRadius: "14px",
+  background: "#fdf8f6",
+  border: "1.5px solid",
+  borderColor: "#e07a5f",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "0.3rem",
+});
+
+const result_label_warn = css({
+  fontSize: "0.8rem",
+  fontWeight: "700",
+  color: "#c05621",
+  letterSpacing: "0.05em",
+});
+
+const result_value_warn = css({
+  fontSize: "1.2rem",
+  fontWeight: "800",
+  color: "taxy.ink",
 });
