@@ -74,6 +74,12 @@ export function TaxyScreen() {
     });
   };
 
+  const restartQuestionnaire = () => {
+    setAnswers({});
+    setQuestionNumber(1);
+    setResult(null);
+  };
+
   return (
     <div className={screen}>
       <header className={status}>
@@ -101,6 +107,11 @@ export function TaxyScreen() {
           {(questionNumber > 1 || result !== null) && (
             <button className={backButton} onClick={goBack}>
               ← 1問前に戻る
+            </button>
+          )}
+          {result !== null && (
+            <button className={backButton} onClick={restartQuestionnaire}>
+              最初に戻る
             </button>
           )}
         </div>
